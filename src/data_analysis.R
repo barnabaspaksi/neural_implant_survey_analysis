@@ -48,14 +48,14 @@ df %>%
   tabyl(academic_program, gender) %>% 
   adorn_totals(where = c("row", "col"))
 
-p1 <- df %>% 
+gender_over_age_hist <- df %>% 
   count(age, gender) %>% 
   ggplot(aes(x = age, y = n, fill = gender)) + 
   geom_col(color = "black") + 
   labs(title = "Age Distribution by Gender", x = "Age Group", y = "Count", fill = "Gender") + 
   theme_minimal()
 
-p2 <- df %>% 
+prog_over_age_hist <- df %>% 
   count(age, academic_program) %>% 
   ggplot(aes(x = age, y = n, fill = academic_program)) + 
   geom_col(color = "black") + 
@@ -63,7 +63,17 @@ p2 <- df %>%
   theme_minimal()
 
 # Displaying distribution of gender and program over age groups
-p1 + p2
+gender_over_age_hist + prog_over_age_hist
+
+# We observe that Data Science students span a wider range of age categories 
+# compared to Business Informatics, where no students from the age groups 18-20 
+# or over 35 participated in the survey. Data Science has a larger share of 
+# students with 177 compared to 32 for Business Informatics.
+# Furthermore, the distribution of female students has a different shape
+# compared to the overall distribution, as the size of the 21-23 age group
+# exceeds that of the 23-25 group for females. As male students, 
+# accounting for 156 out of 209 observations of the sample, appear more in 
+# 23-25 compared to 21-23, they dominate the overall shape too.
 
 ### Q1 ###
 # After 10 years of successful safety testing, on a scale of 1 to 5 (1 = Strongly Disagree, 5 = Strongly Agree), would you undergo a surgical procedure to implant a cognitive-enhancement chip in your brain? #
