@@ -11,9 +11,16 @@ if (!requireNamespace("janitor", quietly = TRUE)) {
 if (!requireNamespace("patchwork", quietly = TRUE)) {
   install.packages("patchwork")
 }
+if (!requireNamespace("survey", quietly = TRUE)) {
+  install.packages("survey")
+}
+if (!requireNamespace("car", quietly = TRUE)) {
+  install.packages("car")
+}
 
 library(janitor)
 library(patchwork)
+library(car)
 
 load_orig_dataset <- function(){
   
@@ -122,3 +129,65 @@ df_long %>% count(Q3, sort = TRUE) %>%
   mutate(percent = (n / nrow(df_long))*100)
 
 barplot(table(df_long$Q3), las = 2)
+
+####################
+library(survey)
+
+base_design <- svydesign(ids = ~1, data = df)
+
+# 2. OPTIONAL: If you want to fix the 177 vs 32 program imbalance 
+# structure your known population totals (e.g., assuming a 50/50 true split)
+pop_program <- data.frame(academic_program = c("Data Science", "Business Informatics"), 
+                          Freq = c(105.5, 105.5)) # Total 209 split evenly
+
+weighted_design <- rake(design = base_design,
+                        sample.margins = list(~academic_program),
+                        population.margins = list(pop_program))
+
+df$Q1_ordered <- factor(df$Q1, levels = 1:5, ordered = TRUE)
+df$academic_program <- as.factor(df$academic_program)
+df$gender <- as.factor(df$gender)
+
+# Re-build design with the updated dataframe
+final_design <- svydesign(ids = ~1, data = df)
+
+# Run the Ordinal Logistic Regression with an interaction term
+# This tests if the effect of the program changes based on gender
+q1_ordinal_model <- svyolr(Q1_ordered ~ academic_program * gender, 
+                           design = final_design)
+
+summary(q1_ordinal_model)
+
+# Fit the Factorial Model matching your exact columns
+factorial_model <- lm(Q1 ~ academic_program * gender, data = df)
+
+# Look at the main effects and the crucial interaction effect
+anova(factorial_model)
+
+# Model Validation (Crucial due to the 177 vs 32 imbalance)
+# This checks if the uneven group sizes break the variance assumptions
+
+
+car::leveneTest(Q1 ~ academic_program * gender, data = df)
+
+# homoskedasticity assumption does not hold: lm and anova above are not 
+# reliable
+
+# Runs a one-way ANOVA alternative that does not assume equal variances
+oneway.test(Q1 ~ interaction(academic_program, gender), data = df, var.equal = FALSE)
+# The Welch-corrected test is reliable even without homoskedasticity. It tells 
+# us that there is some significant difference between groups. As it contradicts
+# the previous svyolr, we need to discuss why. It is because that method takes 
+# a single baseline, while this one checks everything. We can use another test 
+# to find out where the significant rift was.
+
+pairwise.t.test(df$Q1, interaction(df$academic_program, df$gender), 
+                p.adjust.method = "holm", 
+                pool.sd = FALSE) # FALSE forces it to use Welch's correction
+
+# The test shows that the relevant divide is between female and male students 
+# studying DS, as that is the only p-value under 0.05. Its value is 0.03. 
+# Interestingly, the same does not hold between BI females and DS males. We 
+# suspect that the main driver of this difference is the sample size. 
+# After the correction, the two female groups across programs are not 
+# statistically different either, which seems paradoxical after the previous insights.
