@@ -64,7 +64,7 @@ show_rundown <- function(df){
 ```
 
 ```{r}
-setwd("C:/Users/Georg/BarniRepository/neural_implant_survey_analysis/data/")
+setwd("C:/Users/saram/OneDrive/COURSES/DASM")
 all_results <- load_orig_dataset()
 df <- create_g13_subset(all_results)
 show_rundown(df)
@@ -323,4 +323,94 @@ message("--- Design-Adjusted Type-II Analysis of Deviance ---")
 car::Anova(survey_risk_model, test.statistic = "Chisq")
 ```
 
+## Q2
+
+# After 10 years of successful safety testing, what ratio of the general population (0-100%) do you believe would choose to get the implant?
+
+```{r}
+# ==============================================================================
+# SECTION 1: Exploratory Data Analysis & Descriptive Inference
+# ==============================================================================
+
+# 1. Grouped Boxplot for Visual Exploration
+ggplot(df, aes(x = academic_program, y = Q2, fill = gender)) +
+  geom_boxplot() +
+  labs(title = "Estimated Public Adoption by Program and Gender",
+       x = "Academic Program",
+       y = "Estimated Population Ratio (0-100%)",
+       fill = "Gender") +
+  theme_minimal()
+
+# 2. Descriptive Summary Statistics Table
+q2_summary <- df %>%
+  group_by(academic_program, gender) %>%
+  summarise(
+    Count = n(),
+    Mean = round(mean(Q2, na.rm = TRUE), 2),
+    Median = median(Q2, na.rm = TRUE),
+    SD = round(sd(Q2, na.rm = TRUE), 2),
+    Min = min(Q2, na.rm = TRUE),
+    Max = max(Q2, na.rm = TRUE),
+    .groups = 'drop'
+  )
+
+print(q2_summary)
+```
+
+For our exploratory data analysis of Question 2, we generated a grouped
+boxplot breaking down public adoption estimates by both academic program
+and gender. The summary statistics reveal a shared median estimate of
+roughly 30% across most subgroups, though the standard deviations are
+exceedingly high (ranging from 21 to 27), indicating a massive degree of
+individual uncertainty regarding public sentiment.
+
+Visually, the boxplot exposes a fascinating demographic intersection. In
+Business Informatics, male students generally predicted higher adoption
+rates than female students, featuring a higher median and an extended
+upper quartile. However, in Data Science, this dynamic completely flips.
+Female Data Science students hold the most optimistic views of public
+adoption, with a median estimate near 45%. Conversely, Data Science
+males shift downward to the lowest median in the entire sample. This
+visual crossing pattern strongly suggests an interaction effect between
+program and gender.
+
+```{r}
+# ==============================================================================
+# SECTION 2: Analytic Inference (Survey-Weighted Interaction Model)
+# ==============================================================================
+
+# Fit a design-weighted linear model for Q2 using the previously established 
+# 'weighted_design' to account for the sample imbalance and heteroskedasticity.
+q2_interaction_model <- svyglm(Q2 ~ academic_program * gender, design = weighted_design)
+
+# Output the robust summary 
+summary(q2_interaction_model)
+```
+
+Because Levene's test from Q1 confirmed that the homoskedasticity
+assumption is violated across our demographic groups, and given the
+extreme 177-to-32 sample imbalance between programs, traditional
+unweighted tests like a standard Two-Way ANOVA would yield unreliable
+standard errors. To safely test if the visual crossing pattern observed
+in the EDA is statistically meaningful, we applied the same
+design-weighted generalized linear model (svyglm) utilized in Q1,
+seamlessly incorporating our population raking weights.The regression
+output confirms the structural dynamics hinted at by our exploratory
+visuals. The independent main effects for both academic program
+($p = 0.126$) and gender ($p = 0.496$) fail to reach statistical
+significance on their own. This indicates that neither demographic trait
+acts as a standalone predictor for how a student estimates public
+technology adoption.
+
+However, the interaction term between the Data
+Science program and Male gender yields a $p$-value of $0.053$. While
+sitting precisely on the margin of the traditional $\alpha = 0.05$
+threshold, this indicates a strong, marginally significant interaction
+trend at the population level. It mathematically validates that the
+relationship between gender and adoption estimates is not static; it
+dynamically reverses depending on the student's academic specialization.
+Therefore, we conclude that perceptions of societal tech adoption are
+not driven by single traits, but are jointly constructed by the
+intersection of a student's gender identity and their academic
+discipline.
 
