@@ -1,0 +1,326 @@
+---
+title: "DASM"
+output: html_document
+date: "2026-06-28"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(stringr)
+library(ggplot2)
+library(dplyr)
+
+if (!requireNamespace("WRS2", quietly = TRUE)) {
+  install.packages("WRS2")
+}
+if (!requireNamespace("janitor", quietly = TRUE)) {
+  install.packages("janitor")
+}
+
+if (!requireNamespace("patchwork", quietly = TRUE)) {
+  install.packages("patchwork")
+}
+if (!requireNamespace("survey", quietly = TRUE)) {
+  install.packages("survey")
+}
+if (!requireNamespace("car", quietly = TRUE)) {
+  install.packages("car")
+}
+
+library(janitor)
+library(patchwork)
+library(car)
+```
+
+```{r}
+
+load_orig_dataset <- function(){
+  
+  all_results = read.csv("Survey_results_2026.csv")
+  dim(all_results)
+  colnames(all_results)
+  
+  return (all_results)
+}
+
+create_g13_subset <- function(all_results){
+  
+  df = all_results %>% select(starts_with("DQ") | starts_with("G13"))
+  colnames(df) = c("age", "gender", "academic_program", "Q1", "Q2", "Q3")
+  
+  return(df)
+}
+
+
+show_rundown <- function(df){
+  dim(df)
+  str(df)
+  head(df)
+}
+```
+
+```{r}
+setwd("C:/Users/Georg/BarniRepository/neural_implant_survey_analysis/data/")
+all_results <- load_orig_dataset()
+df <- create_g13_subset(all_results)
+show_rundown(df)
+```
+
+### General Exploration before Tackling Research Questions
+
+```{r}
+df %>% 
+  tabyl(academic_program, gender) %>% 
+  adorn_totals(where = c("row", "col"))
+
+gender_over_age_hist <- df %>% 
+  count(age, gender) %>% 
+  ggplot(aes(x = age, y = n, fill = gender)) + 
+  geom_col(color = "black") + 
+  labs(title = "Age Distribution by Gender", 
+       x = "Age Group", y = "Count", fill = "Gender") + 
+  theme_minimal()
+
+prog_over_age_hist <- df %>% 
+  count(age, academic_program) %>% 
+  ggplot(aes(x = age, y = n, fill = academic_program)) + 
+  geom_col(color = "black") + 
+  labs(title = "Age Distribution by Academic Program", 
+       x = "Age Group", y = "Count", fill = "Program") + 
+  theme_minimal()
+
+# Displaying distribution of gender and program over age groups
+gender_over_age_hist + prog_over_age_hist
+```
+
+We observe that Data Science students span a wider range of age categories 
+compared to Business Informatics, where no students from the age groups 18-20 
+or over 35 participated in the survey. Data Science has a larger share of 
+students with 177 compared to 32 for Business Informatics.
+Furthermore, the distribution of female students has a different shape
+compared to the overall distribution, as the size of the 21-23 age group
+exceeds that of the 23-25 group for females. As male students, 
+accounting for 156 out of 209 observations of the sample, appear more in 
+23-25 compared to 21-23, they dominate the overall shape too.
+
+## Q1
+
+# After 10 years of successful safety testing, on a scale of 1 to 5 (1 = Strongly Disagree, 5 = Strongly Agree), would you undergo a surgical procedure to implant a cognitive-enhancement chip in your brain? 
+
+```{r}
+table(df$Q1)
+round(prop.table(table(df$Q1)), 4)
+barplot(prop.table(table(df$Q1)), ylim = c(0,0.4))
+```
+
+```{r}
+df %>% 
+  tabyl(academic_program, gender) %>% 
+  adorn_totals(where = c("row", "col"))
+```
+
+
+```{r}
+library(car)
+car::leveneTest(Q1 ~ academic_program * gender, data = df)
+```
+The homoskedasticity assumption does not hold: traditional lm and anova are not 
+reliable. We need to use robust methods to handle this.
+
+```{r}
+library(WRS2)
+# ==============================================================================
+# DIAGNOSTIC STEP: Initial Unweighted Exploration & Robust Checks
+# ==============================================================================
+
+# Welch's Alternative to One-Way ANOVA & Pairwise Comparisons
+oneway.test(Q1 ~ interaction(academic_program, gender), data = df, var.equal = FALSE)
+
+pairwise.t.test(df$Q1, interaction(df$academic_program, df$gender), 
+                p.adjust.method = "holm", pool.sd = FALSE)
+
+# Prepare clean df 
+df_robust <- df %>%
+  mutate(
+    academic_program = as.factor(academic_program),
+    gender = as.factor(gender),
+    Q1 = as.numeric(Q1) # Mandatory for trimmed means calculation
+  )
+
+df_nonparametric <- df %>%
+  mutate(
+    group_comb = interaction(academic_program, gender),
+    Q1_ordered = factor(Q1, levels = 1:5, ordered = TRUE) # Best practice for ranks
+  )
+
+# Execute Robust 2-Way ANOVA (Trimming Method)
+robust_model <- t2way(Q1 ~ academic_program * gender, data = df_robust)
+print(robust_model)
+
+# Execute Non-parametric Multi-group Test
+kruskal.test(Q1_ordered ~ group_comb, data = df_nonparametric)
+```
+We began our analysis by performing a classical Welch’s ANOVA (oneway.test) 
+alongside an unweighted pairwise $t$-test with a Holm adjustment across our 
+sample groups. This unweighted exploration revealed a single statistically 
+significant rift specifically between Data Science Males and Data Science 
+Females ($p = 0.030$). Interestingly, this gender divide did not hold between 
+Business Informatics Females and Data Science Males, and no main programmatic 
+differences were initially detected.
+
+To ensure that these initial unweighted findings were not an artifact of 
+breaking the homoskedasticity assumption, we also subjected the raw data to a 
+Robust 2-Way Factorial ANOVA via M-measures (WRS2::t2way) and a non-parametric 
+Kruskal-Wallis rank test. While both tests flagged significant group-level 
+variations driven primarily by gender ($p = 0.044$ and $p = 0.0178$ respectively), 
+they suffer from a shared fatal flaw: they cannot accommodate population 
+sampling weights.
+
+Relying solely on these unweighted, classical robust and non-parametric 
+$p$-values presents severe statistical risks. Our sample suffers from an extreme
+structural imbalance, with Data Science students heavily outnumbering Business
+Informatics students 177 to 32. Furthermore, Levene’s test explicitly rejects
+the assumption of equal variances ($p = 0.0143$), confirming that the 
+homoskedasticity assumption is violated. Because classical unweighted tests
+treat every respondent equally despite these issues, the overwhelming volume of
+the Data Science cohort risks distorting standard errors, altering rank 
+distribution, or masking true population-level insights.
+
+Therefore, while this exploratory stage suggests that students share similar 
+viewpoints across academic programs, these structural imbalances mean 
+traditional descriptive metrics and classical robust regressions are ultimately
+inadequate. To rigorously confirm the absence of an academic program effect, 
+handle the heteroskedasticity, and validate whether the observed gender divide 
+holds true under population adjustments, we must transition to a formal 
+multi-factor survey design. By raking the sample to a balanced 50/50 
+programmatic split and utilizing robust sandwich variance estimators, we can 
+safely finalize these relationships within a design-weighted framework.
+
+```{r}
+library(survey)
+library(robustbase)
+library(stringr)
+library(purrr)
+
+# ==============================================================================
+# SECTION 1: Define the Survey Design & Weights
+# ==============================================================================
+
+# 1. Base design (Equal probability)
+base_design <- svydesign(ids = ~1, data = df)
+
+# 2. Rake to adjust for academic program imbalance (50/50 target split)
+pop_program <- data.frame(academic_program = c("Data Science", "Business Informatics"), 
+                          Freq = c(105.5, 105.5))
+
+weighted_design <- rake(design = base_design,
+                        sample.margins = list(~academic_program),
+                        population.margins = list(pop_program))
+
+# 3. Clean and prep variables safely within the weighted design framework
+weighted_design <- update(weighted_design,
+                          Q1_ordered = factor(Q1, levels = 1:5, ordered = TRUE),
+                          gender = as.factor(gender),
+                          academic_program = as.factor(academic_program))
+
+```
+
+Because Levene's test explicitly rejects the assumption of equal variances 
+($p = 0.0143$), traditional linear models and ANOVAs cannot be trusted to 
+evaluate these relationships. To test for programmatic effects in the absence of 
+homoskedasticity and to account for selection bias, we implement a 
+design-weighted survey framework utilizing robust sandwich estimators.
+
+```{r}
+# ==============================================================================
+# SECTION 2: Initial Multi-Factor Analysis (The "Insignificant" Models)
+# ==============================================================================
+
+# 1. Fit a design-weighted linear models
+q1_glmodel <- svyglm(Q1 ~ academic_program * gender, design = weighted_design)
+summary(q1_glmodel)
+
+q1_ordinal_model <- svyolr(Q1_ordered ~ academic_program * gender, 
+                           design = weighted_design)
+summary(q1_ordinal_model)
+
+# 2. Run the Design-Corrected Wald Omnibus Test 
+# This establishes global interaction significance within the survey framework
+# --- Global Omnibus Interaction Test ---
+regTermTest(q1_glmodel, ~academic_program:gender)
+
+# 3. Target Subgroup Means Extraction
+subgroup_means <- svyby(~Q1, by = ~academic_program + gender, 
+                        design = weighted_design, svymean)
+print(subgroup_means)
+
+# 4. Target Contrast Isolation (Resolving the baseline masking effect safely)
+# --- Specific Target Contrast Test ---
+svycontrast(q1_glmodel, contrasts=list("DS_Male_vs_DS_Female" = c(0, 0, 1, 1)))
+```
+
+Compared to the default alphabetical reference baseline (Business Informatics
+Females) used in the regression outputs, the individual interaction terms do 
+not initially appear significant. This masking effect occurs because standard
+regression parameters evaluate groups strictly relative to one baseline. 
+To verify whether the overall interaction framework holds any statistical
+value globally, we perform a design-corrected omnibus test (regTermTest).
+
+In the extracted subgroup means, we notice that the ratings for females 
+are lower on average across both academic programs. Given the standard errors, 
+we bypass the baseline masking effect by directly contrasting the specific pair
+with the largest descriptive gap: Data Science Males versus Data Science Females.
+
+When proper survey controls are applied, the significance of the gender gap
+within the Data Science discipline is heavily amplified ($t = 2.927, p \approx 0.003$).
+This confirms that the gender rift is a robust, population-level 
+phenomenon, while validating that academic programs show no baseline variations.
+
+```{r}
+# ==============================================================================
+# SECTION 4: Risk Factor Analysis (Q3 Predictors on Q1)
+# ==============================================================================
+
+# 1. Parse checklist string dynamically into indicator objects
+all_risks <- df$Q3 %>%
+  str_split(";") %>%
+  flatten_chr() %>%
+  unique() %>%
+  discard(~ .x == "" | is.na(.x))
+
+q3_dummy_list <- map(all_risks, function(risk) {
+  as.numeric(str_detect(df$Q3, fixed(risk)))
+})
+
+q3_dummy <- as.data.frame(q3_dummy_list)
+colnames(q3_dummy) <- make.names(all_risks)
+
+# Append dynamic columns back to original data stream
+df_extended <- cbind(df, q3_dummy)
+
+# 2. Construct a weighted design for the risk dataset
+risk_base_design <- svydesign(ids = ~1, data = df_extended)
+risk_weighted_design <- rake(design = risk_base_design,
+                             sample.margins = list(~academic_program),
+                             population.margins = list(pop_program))
+
+# 3. Dynamic Formula Formulation
+risk_variables <- colnames(q3_dummy)
+formula_string <- paste("Q1 ~", paste(risk_variables, collapse = " + "), "+ gender")
+risk_formula <- as.formula(formula_string)
+
+# 4. Run a Design-Weighted Survey GLM for Risk Analysis
+# This simultaneously accounts for risk perceptions, sample weights, and heteroskedasticity
+survey_risk_model <- svyglm(risk_formula, design = risk_weighted_design)
+summary(survey_risk_model)
+
+# 5. Type-II Design-Adjusted Wald Test for Risk Attributes
+message("--- Design-Adjusted Type-II Analysis of Deviance ---")
+car::Anova(survey_risk_model, test.statistic = "Chisq")
+```
+
+
