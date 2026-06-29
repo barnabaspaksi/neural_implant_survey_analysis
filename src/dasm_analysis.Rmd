@@ -22,11 +22,10 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Introduction
 
-Neurotechnology is developing quickly, and ideas like invasive cognitive‑enhancement implants are starting to move into real applications. As these technologies evolve, it becomes important to understand how people feel about them.
-This report analyzes survey responses to explore three aspects of public perception: people’s personal willingness to receive a neural implant, their expectations about how many others would choose to do so, and the digital risks they find most concerning. 
+Neurotechnology is developing quickly, and ideas like invasive cognitive‑enhancement implants are starting to move into real applications. As these technologies progress, questions arise not only about their technical feasibility but also about public acceptance, societal expectations and the perceived digital risks associated with with new technology like neural implants. Understanding these feelings is essential to understand the ethical, social, and regulatory implications.
+This report analyzes survey responses to explore three aspects of public perception: people’s personal willingness to receive a neural implant, their expectations about how many others would choose to do so, and the digital risks they find most concerning.
+It is explored to what extend the general population accept invasive neural enhancement for cognitive gain and if there is a gap between personal acceptance and the perceived acceptance of the rest of society. Additionally, it is analyzed what the biggest perceived threat is and is there are differences between genders and age groups. 
 
-
-# Data Loading and Preparation
 
 ```{r, include=FALSE}
 library(tidyverse)
@@ -61,7 +60,20 @@ library(WRS2)
 library(survey)
 ```
 
-```{r, comment = NA}
+# Survey and dataset
+
+To explore the public acceptance, societal expectations and risk perception of neural implants, participants filled out a survey answereing three questions about this topic.
+The qustions were:
+
+**Q1:**: \newline
+After 10 years of successful safety testing, on a scale of 1 to 5 (1 = Strongly Disagree, 5 = Strongly Agree), would you undergo a surgical procedure to implant a cognitive-enhancement chip in your brain?
+
+**Q2:**: \newline
+
+
+**Q3:**: \newline
+
+```{r, comment = NA, include=FALSE}
 
 load_orig_dataset <- function(){
   
@@ -100,7 +112,6 @@ show_rundown(df)
 ```
 
 # Preliminary Exploration
-
 ```{r}
 df %>% 
   tabyl(academic_program, gender) %>% 
@@ -139,7 +150,6 @@ accounting for 156 out of 209 observations of the sample, appear more in
 # Research Question Analysis
 ## Q1: Public Acceptance
 
-**After 10 years of successful safety testing, on a scale of 1 to 5 (1 = Strongly Disagree, 5 = Strongly Agree), would you undergo a surgical procedure to implant a cognitive-enhancement chip in your brain?**
 
 ```{r}
 table(df$Q1)
