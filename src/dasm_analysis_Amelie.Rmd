@@ -91,7 +91,7 @@ Which of the following do you perceive as the most immediate risks of neural-lin
 \newline
 For question 3 respondents were asked to choose from a predefined list of possible risks instead of providing free-text responses, to make analysis easier. In hindsight, it would have been useful to include an "Other" option for participants whose concerns were not covered by the listed categories. 
 
-# Dataset 
+## Dataset 
 Additionally to the survey question answers, the dataset contains information about the age group, the gender and the field of studies of the participants. In total 209 people participated in the survey.
 
 ```{r, comment = NA}
