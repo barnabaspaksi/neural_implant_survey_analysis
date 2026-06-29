@@ -62,40 +62,55 @@ library(survey)
 
 # Survey and dataset
 
-To explore the public acceptance, societal expectations and risk perception of neural implants, participants filled out a survey answereing three questions about this topic.
-The qustions were:
+## Survey Questions
 
-**Q1:**: \newline
+To explore the public acceptance, societal expectations and risk perception of neural implants, participants filled out a survey answering three questions about this topic.
+The questions were:
+
+**Q1:** \newline
 After 10 years of successful safety testing, on a scale of 1 to 5 (1 = Strongly Disagree, 5 = Strongly Agree), would you undergo a surgical procedure to implant a cognitive-enhancement chip in your brain?
 
-**Q2:**: \newline
+**Q2:** \newline
+After 10 years of successful safety testing, what ratio of the general population (0-100%) do you believe would choose to get the implant?
 
+**Q3:** \newline
+Which of the following do you perceive as the most immediate risks of neural-link technology? (Select up to 3) \newline
+- polarisation of opinions \newline
+- information overload \newline
+- loss of personality \newline
+- lack of non-digital endeavors \newline
+- social media addiction \newline
+- alienation \newline
+- adverse physical health effects \newline
+- lack of agency \newline
+- dependence on big tech companies \newline
+- data collection by big tech companies \newline
+- devaluation of traditional skills \newline
+- lack of transparency of how digital products function \newline
+- impaired sleep \newline
+\newline
+For question 3 respondents were asked to choose from a predefined list of possible risks instead of providing free-text responses, to make analysis easier. In hindsight, it would have been useful to include an "Other" option for participants whose concerns were not covered by the listed categories. 
 
-**Q3:**: \newline
+## Dataset 
+Additionally to the survey question answers, the dataset contains information about the age group, the gender and the field of studies of the participants. In total 209 people participated in the survey.
 
-```{r, comment = NA, include=FALSE}
-
+```{r, comment = NA}
 load_orig_dataset <- function(){
-  
   all_results = read.csv("Survey_results_2026.csv")
   dim(all_results)
   colnames(all_results)
-  
   return (all_results)
 }
 
 create_g13_subset <- function(all_results){
-  
   df = all_results %>% select(starts_with("DQ") | starts_with("G13"))
   colnames(df) = c("age", "gender", "academic_program", "Q1", "Q2", "Q3")
-  
   return(df)
 }
 
 
 show_rundown <- function(df){
   str(df)
-
   df %>%
   head() %>%
   mutate(
@@ -112,10 +127,75 @@ show_rundown(df)
 ```
 
 # Preliminary Exploration
+```{r, comment = NA}
+age_tab <- round(prop.table(table(df$age)), 4) * 100
+age_df <- data.frame(
+  Age = names(age_tab),
+  Percentage = as.numeric(age_tab)
+)
+knitr::kable(age_df)
+
+gender_tab <- round(prop.table(table(df$gender)), 4) * 100
+gender_df <- data.frame(
+  Gender = names(gender_tab),
+  Percentage = as.numeric(gender_tab)
+)
+knitr::kable(gender_df)
+
+program_tab <- round(prop.table(table(df$academic_program)), 4) * 100
+program_df <- data.frame(
+  Program = names(program_tab),
+  Percentage = as.numeric(program_tab)
+)
+knitr::kable(program_df)
+```
+
+```{r, fig.show='hold', out.width='31%', fig.align='center'}
+df %>%
+  ggplot(aes(x = age)) +
+  geom_bar(color = "black") +
+  labs(title = "Age Distribution",
+       x = "Age Group",
+       y = "Count") +
+  theme_minimal() + 
+  theme(
+  plot.title = element_text(size = 30, face = "bold"),
+  axis.title = element_text(size = 24),
+  axis.text = element_text(size = 20)
+  )
+
+df %>%
+  ggplot(aes(x = gender)) +
+  geom_bar(color = "black") +
+  labs(title = "Gender Distribution",
+       x = "Gender Group",
+       y = "Count") +
+  theme_minimal() + 
+  theme(
+  plot.title = element_text(size = 30, face = "bold"),
+  axis.title = element_text(size = 24),
+  axis.text = element_text(size = 20)
+  )
+
+df %>%
+  ggplot(aes(x = academic_program)) +
+  geom_bar(color = "black") +
+  labs(title = "Academic Program Distribution",
+       x = "Academic Program Group",
+       y = "Count") +
+  theme_minimal() + 
+  theme(
+  plot.title = element_text(size = 30, face = "bold"),
+  axis.title = element_text(size = 24),
+  axis.text = element_text(size = 20)
+  )
+```
+It is visible in the tables and the plot above that the data is not very well distributed. Nearly half of the participants are between 25 and 30, and nearly another quarter between 20 and 25. Around three quarter off all respondents are male and only 15% study Business Informatics, while the rest of the participants studies Data Science. 
+
 ```{r}
 df %>% 
   tabyl(academic_program, gender) %>% 
-  adorn_totals(where = c("row", "col"))
+  adorn_totals(where = c("row", "col")) %>% kable()
 
 gender_over_age_hist <- df %>% 
   count(age, gender) %>% 
@@ -123,7 +203,8 @@ gender_over_age_hist <- df %>%
   geom_col(color = "black") + 
   labs(title = "Age Distribution by Gender", 
        x = "Age Group", y = "Count", fill = "Gender") + 
-  theme_minimal()
+  theme_minimal()  +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
 prog_over_age_hist <- df %>% 
   count(age, academic_program) %>% 
@@ -131,13 +212,13 @@ prog_over_age_hist <- df %>%
   geom_col(color = "black") + 
   labs(title = "Age Distribution by Academic Program", 
        x = "Age Group", y = "Count", fill = "Program") + 
-  theme_minimal()
+  theme_minimal()  +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
 # Displaying distribution of gender and program over age groups
 gender_over_age_hist + prog_over_age_hist
 ```
-
-We observe that Data Science students span a wider range of age categories 
+Looking at the demographic variables in combination to each other, we observe that Data Science students span a wider range of age categories 
 compared to Business Informatics, where no students from the age groups 18-20 
 or over 35 participated in the survey. Data Science has a larger share of 
 students with 177 compared to 32 for Business Informatics.
@@ -147,22 +228,49 @@ exceeds that of the 23-25 group for females. As male students,
 accounting for 156 out of 209 observations of the sample, appear more in 
 23-25 compared to 21-23, they dominate the overall shape too.
 
+
+The data contains no missing values.
+
 # Research Question Analysis
 ## Q1: Public Acceptance
-
+With the first research question we try to answer the question Research to what extent the general population accepts invasive neural enhancement for cognitive gain?
+Our hypothesis is that a majority of respondents (more than 50%) will reject a brain-chip implant (>10 years of testing) even if it guarantees improved cognitive performance. The higher the number, the more willing participants would be to implant a brain chip for cognitive enhancement.
+We also explore if the answers differ depending on the age group and the gender.
 
 ```{r}
 table(df$Q1)
 round(prop.table(table(df$Q1)), 4)
-barplot(prop.table(table(df$Q1)), ylim = c(0,0.4))
+df %>%
+  ggplot(aes(x = Q1)) +
+  geom_bar(color = "black") +
+  labs(title = "Q1 Distribution",
+       x = "Answer",
+       y = "Count") +
+  theme_minimal() + 
+  theme(
+  plot.title = element_text(size = 30, face = "bold"),
+  axis.title = element_text(size = 24),
+  axis.text = element_text(size = 20)
+  )
 ```
+Just based on the the exploratory results we can see that a majority of people would not be willing to implant a brain chip. Around 60% of people said they they would disagree or strongly disagree and only around 16% of people would agree or strongly agree. The other 34% are neutral on this matter. Our binomial test confirms this result. It shows that this proportion is significantly lower than 50% (p < 0.001), providing strong evidence against the hypothesis that half or more of participants would accept the implant.Even if we counted the neutral voices as acceptance, we still would reject the null-hypothesis (p = 0.001784) based on a 0.05 level.
 
 ```{r}
-df %>% 
-  tabyl(academic_program, gender) %>% 
-  adorn_totals(where = c("row", "col"))
-```
+df <- df %>%
+  mutate(
+    acceptance = ifelse(Q1 > 3, 1, 0),
+    acceptance_neural  = ifelse(Q1 > 2, 1, 0)
+  )
+binom.test(x = sum(df$acceptance == 1),
+           n = nrow(df),
+           p = 0.5,
+           alternative = "less")
 
+binom.test(x = sum(df$acceptance_neural == 1),
+           n = nrow(df),
+           p = 0.5,
+           alternative = "less")
+```
 
 ```{r}
 car::leveneTest(Q1 ~ academic_program * gender, data = df)
@@ -586,22 +694,9 @@ persists as a strong population trend.
 ## Q3: Risk Perception
 Our third hyposes was that concerns regarding "Loss of Agency" and "Dependence on Big Tech" will be the most frequently cited risks among those who reject the implant. The students could choose out of the foloowing reasons. 
 
-**Which of the following do you perceive as the most immediate risks of neural-link technology? (Select up to 3)** \newline
-**- polarisation of opinions** \newline
-**- information overload** \newline
-**- loss of personality** \newline
-**- lack of non-digital endeavors** \newline
-**- social media addiction** \newline
-**- alienation** \newline
-**- adverse physical health effects** \newline
-**- lack of agency** \newline
-**- dependence on big tech companies** \newline
-**- data collection by big tech companies** \newline
-**- devaluation of traditional skills** \newline
-**- lack of transparency of how digital products function** \newline
-**- impaired sleep** \newline
+Although respondents were instructed to select a maximum of three answers, around 20% selected more than three. We decided to keep these responses in the analysis because excluding them would have reduced the sample size considerably, and there is no way to know which three options respondents would have considered their top choices. This likely leads to an overestimation of the frequencies of some categories, although it is not possible to determine which ones. We nevertheless assume that the overall ranking of the most frequently selected categories would remain similar if everyone had followed the instructions.
 
-To make the analysis easier, respondents were asked to choose from a predefined list of possible risks instead of providing free-text responses. In hindsight, it would have been useful to include an "Other" option for participants whose concerns were not covered by the listed categories. Although respondents were instructed to select a maximum of three answers, around 20% selected more than three. We decided to keep these responses in the analysis because excluding them would have reduced the sample size considerably, and there is no way to know which three options respondents would have considered their top choices. This likely leads to an overestimation of the frequencies of some categories, although it is not possible to determine which ones. We nevertheless assume that the overall ranking of the most frequently selected categories would remain similar if everyone had followed the instructions.
+
 
 ```{r}
 ### Transform the dataset
@@ -681,7 +776,7 @@ mcnemar.test(table(df_test$big_tech, df_test$transparency))
 ```
 
 
-We also analyzed if there was a difference between genders and the age classes, but there was no differencw
+We also analyzed if there was a difference between genders and the age classes, but there was no differenc
 ```{r}
 table(df_test$loss_agency, df_test$gender)
 chisq.test(df_test$loss_agency, df_test$gender)
