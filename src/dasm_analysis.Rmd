@@ -1,18 +1,42 @@
 ---
-title: "DASM"
-output: html_document
-date: "2026-06-28"
+title: "Public Acceptance, Societal Expectations and Risk Perception of Neural Implants"
+subtitle: "Survey Analysis Report"
+author:
+- Assmayr Amélie Elisabeth (12007770)
+- Marton Zita Dorina (12340246)
+- Milla Sara (12432969)
+- Paksi Barnabás (11926285)
+- Vaught Helene Johanna (11943054)
+date: "`r Sys.Date()`"
+output:
+  pdf_document:
+    toc: true
+    toc_depth: 3
+geometry: margin=1in
+fontsize: 11pt
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-```{r}
+# Introduction
+
+Advances in neurotechnology have brought invasive cognitive‑enhancement implants from speculative concepts into emerging real‑world applications. As these technologies progress, questions arise not only about their technical feasibility but also about public acceptance, perceived societal adoption, and the digital risks associated with integrating biological and computational systems. Understanding these attitudes is essential for anticipating ethical, social, and regulatory implications.
+
+This report presents a survey‑based analysis examining three dimensions of public perception: individual willingness to undergo a neural implant, expectations regarding broader societal adoption, and the specific digital risks respondents associate with such technologies. Through this exploration, the study aims to provide an initial empirical foundation for assessing how people evaluate invasive neural enhancement after extended safety testing and how concerns about agency, dependence on technology companies, and digital vulnerability shape these evaluations.
+
+
+# Data Loading and Preparation
+
+```{r, include=FALSE}
 library(tidyverse)
 library(stringr)
 library(ggplot2)
 library(dplyr)
+library(knitr)
+library(robustbase)
+library(purrr)
 
 if (!requireNamespace("WRS2", quietly = TRUE)) {
   install.packages("WRS2")
@@ -34,9 +58,11 @@ if (!requireNamespace("car", quietly = TRUE)) {
 library(janitor)
 library(patchwork)
 library(car)
+library(WRS2)
+library(survey)
 ```
 
-```{r}
+```{r, comment = NA}
 
 load_orig_dataset <- function(){
   
@@ -57,20 +83,24 @@ create_g13_subset <- function(all_results){
 
 
 show_rundown <- function(df){
-  dim(df)
   str(df)
-  head(df)
+
+  df %>%
+  head() %>%
+  mutate(
+    Q3 = str_trunc(Q3, width = 45)
+  ) %>%
+  kable()
 }
 ```
 
-```{r}
-setwd("C:/Users/Georg/BarniRepository/neural_implant_survey_analysis/data/")
+```{r, comment = NA}
 all_results <- load_orig_dataset()
 df <- create_g13_subset(all_results)
 show_rundown(df)
 ```
 
-### General Exploration before Tackling Research Questions
+# Preliminary Exploration
 
 ```{r}
 df %>% 
@@ -107,9 +137,10 @@ exceeds that of the 23-25 group for females. As male students,
 accounting for 156 out of 209 observations of the sample, appear more in 
 23-25 compared to 21-23, they dominate the overall shape too.
 
-## Q1
+# Research Question Analysis
+## Q1: Public Acceptance
 
-# After 10 years of successful safety testing, on a scale of 1 to 5 (1 = Strongly Disagree, 5 = Strongly Agree), would you undergo a surgical procedure to implant a cognitive-enhancement chip in your brain? 
+**After 10 years of successful safety testing, on a scale of 1 to 5 (1 = Strongly Disagree, 5 = Strongly Agree), would you undergo a surgical procedure to implant a cognitive-enhancement chip in your brain?**
 
 ```{r}
 table(df$Q1)
@@ -125,14 +156,12 @@ df %>%
 
 
 ```{r}
-library(car)
 car::leveneTest(Q1 ~ academic_program * gender, data = df)
 ```
 The homoskedasticity assumption does not hold: traditional lm and anova are not 
 reliable. We need to use robust methods to handle this.
 
 ```{r}
-library(WRS2)
 # ==============================================================================
 # DIAGNOSTIC STEP: Initial Unweighted Exploration & Robust Checks
 # ==============================================================================
@@ -201,11 +230,6 @@ programmatic split and utilizing robust sandwich variance estimators, we can
 safely finalize these relationships within a design-weighted framework.
 
 ```{r}
-library(survey)
-library(robustbase)
-library(stringr)
-library(purrr)
-
 # ==============================================================================
 # SECTION 1: Define the Survey Design & Weights
 # ==============================================================================
@@ -323,9 +347,9 @@ message("--- Design-Adjusted Type-II Analysis of Deviance ---")
 car::Anova(survey_risk_model, test.statistic = "Chisq")
 ```
 
-## Q2
+## Q2: Societal Expectations
 
-# After 10 years of successful safety testing, what ratio of the general population (0-100%) do you believe would choose to get the implant?
+**After 10 years of successful safety testing, what ratio of the general population (0-100%) do you believe would choose to get the implant?**
 
 ```{r}
 # ==============================================================================
@@ -418,10 +442,6 @@ discipline.
 
 
 ```{r}
-library(ggplot2)
-library(dplyr)
-library(tidyr)
-
 # Ensure q1 is treated as a factor so it plots as discrete blocks
 ggplot(df, aes(x = factor(Q1), fill = age)) +
   geom_bar(position = "dodge", color = "white") +
@@ -500,9 +520,6 @@ summary(q2_age_model)
 ```
 
 ```{r}
-library(dplyr)
-library(survey)
-
 # 1. Recode age into a binary factor, fixing the "30-35" grouping error
 df_final <- df %>%
   mutate(
@@ -556,3 +573,121 @@ remains marginally significant ($p = 0.063$). This indicates that even when
 adjusting for age structural imbalances, the inverse relationship where 
 Data Science females are highly optimistic while males are pessimistic 
 persists as a strong population trend.
+
+## Q3: Risk Perception
+Our third hyposes was that concerns regarding "Loss of Agency" and "Dependence on Big Tech" will be the most frequently cited risks among those who reject the implant. The students could choose out of the foloowing reasons. 
+
+**Which of the following do you perceive as the most immediate risks of neural-link technology? (Select up to 3)** \newline
+**- polarisation of opinions** \newline
+**- information overload** \newline
+**- loss of personality** \newline
+**- lack of non-digital endeavors** \newline
+**- social media addiction** \newline
+**- alienation** \newline
+**- adverse physical health effects** \newline
+**- lack of agency** \newline
+**- dependence on big tech companies** \newline
+**- data collection by big tech companies** \newline
+**- devaluation of traditional skills** \newline
+**- lack of transparency of how digital products function** \newline
+**- impaired sleep** \newline
+
+To make the analysis easier, respondents were asked to choose from a predefined list of possible risks instead of providing free-text responses. In hindsight, it would have been useful to include an "Other" option for participants whose concerns were not covered by the listed categories. Although respondents were instructed to select a maximum of three answers, around 20% selected more than three. We decided to keep these responses in the analysis because excluding them would have reduced the sample size considerably, and there is no way to know which three options respondents would have considered their top choices. This likely leads to an overestimation of the frequencies of some categories, although it is not possible to determine which ones. We nevertheless assume that the overall ranking of the most frequently selected categories would remain similar if everyone had followed the instructions.
+
+```{r}
+### Transform the dataset
+df_long <- df %>%
+  separate_rows(Q3, sep = ";")
+df_long %>% count(Q3, sort = TRUE) %>%
+  mutate(percent = (n / nrow(df_long))*100)
+df_long <- df_long %>%
+  mutate(
+    acceptance = ifelse(Q1 > 3, 1, 0),
+  )
+
+
+df_test <- df %>%
+  mutate(
+    loss_agency = ifelse(str_detect(Q3, "Polarisation of opinions"), 1, 0),
+    loss_personality = ifelse(str_detect(Q3, "Loss of personality"), 1, 0),
+    data_collection = ifelse(str_detect(Q3, "Data collection by big tech companies"), 1, 0),
+    big_tech    = ifelse(str_detect(Q3, "Dependence on big tech companies"), 1, 0),
+    health    = ifelse(str_detect(Q3, "Adverse physical health effects"), 1, 0),
+    transparency   = ifelse(str_detect(Q3, "Lack of transparency of how digital products function"), 1, 0),
+    skill    = ifelse(str_detect(Q3, "Devaluation of traditional skills"), 1, 0),
+    sleep    = ifelse(str_detect(Q3, "Impaired sleep"), 1, 0),
+    addiction    = ifelse(str_detect(Q3, "Social media addiction"), 1, 0),
+    agency    = ifelse(str_detect(Q3, "Lack of agency"), 1, 0),
+    info_overload    = ifelse(str_detect(Q3, "Information overload"), 1, 0),
+    alienation    = ifelse(str_detect(Q3, "Alienation"), 1, 0),
+    endeavors      = ifelse(str_detect(Q3, "Lack of non-digital endeavors"), 1, 0),
+    acceptance = ifelse(Q1 > 3, 1, 0)
+  )
+```
+
+As a first step, we perform an exploratory analysis to identify which risk categories were selected most frequently.
+
+```{r}
+### Transform the dataset
+ggplot(df_long, aes(x = reorder(Q3, Q3, FUN = length, decreasing = TRUE))) +
+  geom_bar() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+# ggplot(df_long, aes(x = Q3, fill = factor(acceptance))) +
+#   geom_bar(position = "dodge") +
+#   labs(x = "Perceived Risk", fill = "Acceptance") +
+#   theme_minimal() +
+#   theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+ggplot(df_long, aes(
+  x = reorder(Q3, Q3, FUN = length, decreasing = TRUE),
+  fill = factor(acceptance)
+)) +
+  geom_bar(position = "dodge") +
+  facet_wrap(~acceptance, ncol = 2) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+In the plot below, dependence on big tech companies is among the most frequently selected responses, ranking second overall, whereas loss of agency is selected less often. When the data is separated by acceptance and non-acceptance of the implant, the overall distributions remain similar, although the ordering of categories changes slightly. Among participants who would accept the implant, dependence on big tech companies represents the most frequently selected concern, whereas among those who would not accept the implant, it ranks second.
+
+
+As a second step we calculated chi square tests, to see whether people rejecting the implant choose the concerns lack of acency and dependence on big tech companies significantly more often.
+```{r}
+table(df_test$loss_agency, df_test$acceptance)
+chisq.test(df_test$loss_agency, df_test$acceptance)
+
+table(df_test$big_tech, df_test$acceptance)
+chisq.test(df_test$big_tech, df_test$acceptance)
+```
+For loss of agency the difference it not significant. For dependence on bis tech the people who accepted this implant chose this issue more often significantly.
+
+To see if dependence on big tech was chosen significantly more often then the other category, I did a mcnemar test. I did not do the test for lack of agency since we already saw in the plot, that it ranks low. Since I repeat this test several times, I apply bonferroni correction in the end to account for the multiple testing. Dependence on big tech companies is chosen significantly more often then all other reasons except for data collection by big tech companies.
+
+```{r}
+mcnemar.test(table(df_test$big_tech, df_test$data_collection))
+mcnemar.test(table(df_test$big_tech, df_test$health))
+mcnemar.test(table(df_test$big_tech, df_test$loss_personality))
+mcnemar.test(table(df_test$big_tech, df_test$transparency))
+```
+
+
+We also analyzed if there was a difference between genders and the age classes, but there was no differencw
+```{r}
+table(df_test$loss_agency, df_test$gender)
+chisq.test(df_test$loss_agency, df_test$gender)
+
+table(df_test$big_tech, df_test$gender)
+chisq.test(df_test$big_tech, df_test$gender)
+```
+
+
+```{r}
+table(df_test$loss_agency, df_test$age)
+chisq.test(df_test$loss_agency, df_test$age)
+
+table(df_test$big_tech, df_test$age)
+chisq.test(df_test$big_tech, df_test$age)
+```
+
+# Discussion and Conclusion
