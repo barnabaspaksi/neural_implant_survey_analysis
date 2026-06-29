@@ -1,0 +1,683 @@
+---
+title: "Public Acceptance, Societal Expectations and Risk Perception of Neural Implants"
+subtitle: "Survey Analysis Report"
+author:
+- Assmayr Amélie Elisabeth (12007770)
+- Marton Zita Dorina (12340246)
+- Milla Sara (12432969)
+- Paksi Barnabás (11926285)
+- Vaught Helene Johanna (11943054)
+date: "`r Sys.Date()`"
+output:
+  pdf_document:
+    toc: true
+    toc_depth: 3
+geometry: margin=1in
+fontsize: 11pt
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+
+Neurotechnology is developing quickly, and ideas like invasive cognitive‑enhancement implants are starting to move into real applications. As these technologies progress, questions arise not only about their technical feasibility but also about public acceptance, societal expectations and the perceived digital risks associated with with new technology like neural implants. Understanding these feelings is essential to understand the ethical, social, and regulatory implications.
+This report analyzes survey responses to explore three aspects of public perception: people’s personal willingness to receive a neural implant, their expectations about how many others would choose to do so, and the digital risks they find most concerning.
+It is explored to what extend the general population accept invasive neural enhancement for cognitive gain and if there is a gap between personal acceptance and the perceived acceptance of the rest of society. Additionally, it is analyzed what the biggest perceived threat is and is there are differences between genders and age groups. 
+
+
+```{r, include=FALSE}
+library(tidyverse)
+library(stringr)
+library(ggplot2)
+library(dplyr)
+library(knitr)
+library(robustbase)
+library(purrr)
+
+if (!requireNamespace("WRS2", quietly = TRUE)) {
+  install.packages("WRS2")
+}
+if (!requireNamespace("janitor", quietly = TRUE)) {
+  install.packages("janitor")
+}
+
+if (!requireNamespace("patchwork", quietly = TRUE)) {
+  install.packages("patchwork")
+}
+if (!requireNamespace("survey", quietly = TRUE)) {
+  install.packages("survey")
+}
+if (!requireNamespace("car", quietly = TRUE)) {
+  install.packages("car")
+}
+
+library(janitor)
+library(patchwork)
+library(car)
+library(WRS2)
+library(survey)
+```
+
+# Survey and dataset
+
+## Survey Questions
+
+To explore the public acceptance, societal expectations and risk perception of neural implants, participants filled out a survey answering three questions about this topic.
+The questions were:
+
+**Q1:** \newline
+After 10 years of successful safety testing, on a scale of 1 to 5 (1 = Strongly Disagree, 5 = Strongly Agree), would you undergo a surgical procedure to implant a cognitive-enhancement chip in your brain?
+
+**Q2:** \newline
+After 10 years of successful safety testing, what ratio of the general population (0-100%) do you believe would choose to get the implant?
+
+**Q3:** \newline
+Which of the following do you perceive as the most immediate risks of neural-link technology? (Select up to 3) \newline
+- polarisation of opinions \newline
+- information overload \newline
+- loss of personality \newline
+- lack of non-digital endeavors \newline
+- social media addiction \newline
+- alienation \newline
+- adverse physical health effects \newline
+- lack of agency \newline
+- dependence on big tech companies \newline
+- data collection by big tech companies \newline
+- devaluation of traditional skills \newline
+- lack of transparency of how digital products function \newline
+- impaired sleep \newline
+\newline
+For question 3 respondents were asked to choose from a predefined list of possible risks instead of providing free-text responses, to make analysis easier. In hindsight, it would have been useful to include an "Other" option for participants whose concerns were not covered by the listed categories. 
+
+## Dataset 
+Additionally to the survey question answers, the dataset contains information about the age group, the gender and the field of studies of the participants. In total 209 people participated in the survey.
+
+```{r, comment = NA}
+load_orig_dataset <- function(){
+  all_results = read.csv("Survey_results_2026.csv")
+  dim(all_results)
+  colnames(all_results)
+  return (all_results)
+}
+
+create_g13_subset <- function(all_results){
+  df = all_results %>% select(starts_with("DQ") | starts_with("G13"))
+  colnames(df) = c("age", "gender", "academic_program", "Q1", "Q2", "Q3")
+  return(df)
+}
+
+
+show_rundown <- function(df){
+  str(df)
+  df %>%
+  head() %>%
+  mutate(
+    Q3 = str_trunc(Q3, width = 45)
+  ) %>%
+  kable()
+}
+```
+
+```{r, comment = NA}
+all_results <- load_orig_dataset()
+df <- create_g13_subset(all_results)
+show_rundown(df)
+```
+
+# Preliminary Exploration
+```{r, comment = NA}
+age_tab <- round(prop.table(table(df$age)), 4) * 100
+age_df <- data.frame(
+  Age = names(age_tab),
+  Percentage = as.numeric(age_tab)
+)
+knitr::kable(age_df)
+
+gender_tab <- round(prop.table(table(df$gender)), 4) * 100
+gender_df <- data.frame(
+  Gender = names(gender_tab),
+  Percentage = as.numeric(gender_tab)
+)
+knitr::kable(gender_df)
+
+program_tab <- round(prop.table(table(df$academic_program)), 4) * 100
+program_df <- data.frame(
+  Program = names(program_tab),
+  Percentage = as.numeric(program_tab)
+)
+knitr::kable(program_df)
+```
+
+```{r, fig.show='hold', out.width='31%', fig.align='center'}
+df %>%
+  ggplot(aes(x = age)) +
+  geom_bar(color = "black") +
+  labs(title = "Age Distribution",
+       x = "Age Group",
+       y = "Count") +
+  theme_minimal() + 
+  theme(
+  plot.title = element_text(size = 30, face = "bold"),
+  axis.title = element_text(size = 24),
+  axis.text = element_text(size = 20)
+  )
+
+df %>%
+  ggplot(aes(x = gender)) +
+  geom_bar(color = "black") +
+  labs(title = "Gender Distribution",
+       x = "Gender Group",
+       y = "Count") +
+  theme_minimal() + 
+  theme(
+  plot.title = element_text(size = 30, face = "bold"),
+  axis.title = element_text(size = 24),
+  axis.text = element_text(size = 20)
+  )
+
+df %>%
+  ggplot(aes(x = academic_program)) +
+  geom_bar(color = "black") +
+  labs(title = "Academic Program Distribution",
+       x = "Academic Program Group",
+       y = "Count") +
+  theme_minimal() + 
+  theme(
+  plot.title = element_text(size = 30, face = "bold"),
+  axis.title = element_text(size = 24),
+  axis.text = element_text(size = 20)
+  )
+```
+It is visible in the tables and the plot above that the data is not very well distributed. Nearly half of the participants are between 25 and 30, and nearly another quarter between 20 and 25. Around three quarter off all respondents are male and only 15% study Business Informatics, while the rest of the participants studies Data Science. 
+
+```{r}
+df %>% 
+  tabyl(academic_program, gender) %>% 
+  adorn_totals(where = c("row", "col")) %>% kable()
+
+gender_over_age_hist <- df %>% 
+  count(age, gender) %>% 
+  ggplot(aes(x = age, y = n, fill = gender)) + 
+  geom_col(color = "black") + 
+  labs(title = "Age Distribution by Gender", 
+       x = "Age Group", y = "Count", fill = "Gender") + 
+  theme_minimal()  +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+prog_over_age_hist <- df %>% 
+  count(age, academic_program) %>% 
+  ggplot(aes(x = age, y = n, fill = academic_program)) + 
+  geom_col(color = "black") + 
+  labs(title = "Age Distribution by Academic Program", 
+       x = "Age Group", y = "Count", fill = "Program") + 
+  theme_minimal()  +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+# Displaying distribution of gender and program over age groups
+gender_over_age_hist + prog_over_age_hist
+```
+Looking at the demographic variables in combination to each other, we observe that Data Science students span a wider range of age categories 
+compared to Business Informatics, where no students from the age groups 18-20 
+or over 35 participated in the survey. Data Science has a larger share of 
+students with 177 compared to 32 for Business Informatics.
+Furthermore, the distribution of female students has a different shape
+compared to the overall distribution, as the size of the 21-23 age group
+exceeds that of the 23-25 group for females. As male students, 
+accounting for 156 out of 209 observations of the sample, appear more in 
+23-25 compared to 21-23, they dominate the overall shape too.
+
+
+The data contains no missing values.
+
+# Research Question Analysis
+## Q1: Public Acceptance
+With the first research question we try to answer the question Research to what extent the general population accepts invasive neural enhancement for cognitive gain?
+Our hypothesis is that a majority of respondents (more than 50%) will reject a brain-chip implant (>10 years of testing) even if it guarantees improved cognitive performance. The higher the number, the more willing participants would be to implant a brain chip for cognitive enhancement.
+We also explore if the answers differ depending on the age group and the gender.
+A binomial test was used to assess whether the proportion of participants accepting a neural implant differed significantly from a reference value of 50%, making it suitable for evaluating a single binary outcome against a theoretical benchmark. 
+
+```{r, out.width='50%', fig.align='center'}
+table(df$Q1)
+round(prop.table(table(df$Q1)), 4)
+df %>%
+  ggplot(aes(x = Q1)) +
+  geom_bar(color = "black") +
+  labs(title = "Q1 Distribution",
+       x = "Answer",
+       y = "Count") +
+  theme_minimal() + 
+  theme(
+  plot.title = element_text(size = 15, face = "bold"),
+  axis.title = element_text(size = 12),
+  axis.text = element_text(size = 10)
+  )
+```
+Just based on the the exploratory results we can see that a majority of people would not be willing to implant a brain chip. Around 60% of people said they they would disagree or strongly disagree and only around 16% of people would agree or strongly agree. The other 34% are neutral on this matter. Our binomial test confirms this result. It shows that this proportion is significantly lower than 50% (p < 0.001), providing strong evidence against the hypothesis that half or more of participants would accept the implant.Even if we counted the neutral voices as acceptance, we still would reject the null-hypothesis (p = 0.001784) based on an accpetanc elevel of 0.05 level.
+
+```{r}
+df <- df %>%
+  mutate(
+    acceptance = ifelse(Q1 > 3, 1, 0),
+    acceptance_neural  = ifelse(Q1 > 2, 1, 0)
+  )
+binom.test(x = sum(df$acceptance == 1),
+           n = nrow(df),
+           p = 0.5,
+           alternative = "less")
+
+binom.test(x = sum(df$acceptance_neural == 1),
+           n = nrow(df),
+           p = 0.5,
+           alternative = "less")
+```
+### Differences by demographic features
+After exploring our research question overall, we also analyzed if there were differences between the genders and academic programs.
+We started by checking whether the variance of Q1 is equal across groups. Since our p-value is smaller then 0.05, the variances differ (heteroskedasticity). This means that standard ANOVA assumptions are violated and we have to be cautious.
+```{r}
+car::leveneTest(Q1 ~ academic_program * gender, data = df)
+```
+We began our analysis with a Welch one-way ANOVA (oneway.test) using the interaction of academic program and gender as grouping factors, together with unweighted pairwise t-tests adjusted using the Holm correction. This exploratory analysis indicated a statistically significant difference between Data Science males and females (p = 0.030), while no clear differences were observed across academic programs or other group comparisons.
+To further explore these patterns under unequal variance conditions, we conducted a robust two-way ANOVA using trimmed means (t2way from the WRS2 package). This analysis serves as a robustness check rather than a direct confirmation of the classical ANOVA results, as it estimates differences based on trimmed means rather than standard means. The robust model suggested that gender differences remain present at the group level (p = 0.044).
+
+```{r}
+# Welch's Alternative to One-Way ANOVA
+oneway.test(Q1 ~ interaction(academic_program, gender), data = df, var.equal = FALSE)
+
+# Prepare clean df 
+df_robust <- df %>%
+  mutate(
+    academic_program = as.factor(academic_program),
+    gender = as.factor(gender),
+    Q1 = as.numeric(Q1) # Mandatory for trimmed means calculation
+  )
+
+df_nonparametric <- df %>%
+  mutate(
+    group_comb = interaction(academic_program, gender),
+    Q1_ordered = factor(Q1, levels = 1:5, ordered = TRUE) # Best practice for ranks
+  )
+
+# Execute Robust 2-Way ANOVA (Trimming Method)
+robust_model <- t2way(Q1 ~ academic_program * gender, data = df_robust)
+print(robust_model)
+```
+
+
+```{r}
+model <- lm(Q1 ~ academic_program * gender, data = df)
+lmtest::coeftest(model, vcov = sandwich::vcovHC(model, "HC3"))
+```
+
+A linear regression model including academic program, gender, and their interaction was fitted to examine differences in Q1 scores between groups. Heteroskedasticity-robust standard errors (HC3) were used to account for unequal variances. The results showed no statistically significant main effect of academic program (β = -0.14, p = 0.57) or gender (β = 0.43, p = 0.21). Furthermore, the interaction between academic program and gender was not significant (β = 0.15, p = 0.70), indicating that the relationship between gender and Q1 does not differ across academic programs. Overall, there is no evidence of systematic differences in Q1 scores across the examined demographic groups.
+
+
+## Q2: Societal Expectations
+
+**After 10 years of successful safety testing, what ratio of the general population (0-100%) do you believe would choose to get the implant?**
+
+```{r}
+# ==============================================================================
+# SECTION 1: Exploratory Data Analysis & Descriptive Inference
+# ==============================================================================
+
+# 1. Grouped Boxplot for Visual Exploration
+ggplot(df, aes(x = academic_program, y = Q2, fill = gender)) +
+  geom_boxplot() +
+  labs(title = "Estimated Public Adoption by Program and Gender",
+       x = "Academic Program",
+       y = "Estimated Population Ratio (0-100%)",
+       fill = "Gender") +
+  theme_minimal()
+
+# 2. Descriptive Summary Statistics Table
+q2_summary <- df %>%
+  group_by(academic_program, gender) %>%
+  summarise(
+    Count = n(),
+    Mean = round(mean(Q2, na.rm = TRUE), 2),
+    Median = median(Q2, na.rm = TRUE),
+    SD = round(sd(Q2, na.rm = TRUE), 2),
+    Min = min(Q2, na.rm = TRUE),
+    Max = max(Q2, na.rm = TRUE),
+    .groups = 'drop'
+  )
+
+print(q2_summary)
+```
+
+For our exploratory data analysis of Question 2, we generated a grouped
+boxplot breaking down public adoption estimates by both academic program
+and gender. The summary statistics reveal a shared median estimate of
+roughly 30% across most subgroups, though the standard deviations are
+exceedingly high (ranging from 21 to 27), indicating a massive degree of
+individual uncertainty regarding public sentiment.
+
+Visually, the boxplot exposes a fascinating demographic intersection. In
+Business Informatics, male students generally predicted higher adoption
+rates than female students, featuring a higher median and an extended
+upper quartile. However, in Data Science, this dynamic completely flips.
+Female Data Science students hold the most optimistic views of public
+adoption, with a median estimate near 45%. Conversely, Data Science
+males shift downward to the lowest median in the entire sample. This
+visual crossing pattern strongly suggests an interaction effect between
+program and gender.
+
+```{r}
+# ==============================================================================
+# SECTION 2: Analytic Inference (Survey-Weighted Interaction Model)
+# ==============================================================================
+
+# Fit a design-weighted linear model for Q2 using the previously established 
+# 'weighted_design' to account for the sample imbalance and heteroskedasticity.
+q2_interaction_model <- svyglm(Q2 ~ academic_program * gender, design = weighted_design)
+
+# Output the robust summary 
+summary(q2_interaction_model)
+```
+
+Because Levene's test from Q1 confirmed that the homoskedasticity
+assumption is violated across our demographic groups, and given the
+extreme 177-to-32 sample imbalance between programs, traditional
+unweighted tests like a standard Two-Way ANOVA would yield unreliable
+standard errors. To safely test if the visual crossing pattern observed
+in the EDA is statistically meaningful, we applied the same
+design-weighted generalized linear model (svyglm) utilized in Q1,
+seamlessly incorporating our population raking weights.The regression
+output confirms the structural dynamics hinted at by our exploratory
+visuals. The independent main effects for both academic program
+($p = 0.126$) and gender ($p = 0.496$) fail to reach statistical
+significance on their own. This indicates that neither demographic trait
+acts as a standalone predictor for how a student estimates public
+technology adoption.
+
+However, the interaction term between the Data
+Science program and Male gender yields a $p$-value of $0.053$. While
+sitting precisely on the margin of the traditional $\alpha = 0.05$
+threshold, this indicates a strong, marginally significant interaction
+trend at the population level. It mathematically validates that the
+relationship between gender and adoption estimates is not static; it
+dynamically reverses depending on the student's academic specialization.
+Therefore, we conclude that perceptions of societal tech adoption are
+not driven by single traits, but are jointly constructed by the
+intersection of a student's gender identity and their academic
+discipline.
+
+############## AGE ###############
+
+
+```{r}
+# Ensure q1 is treated as a factor so it plots as discrete blocks
+ggplot(df, aes(x = factor(Q1), fill = age)) +
+  geom_bar(position = "dodge", color = "white") +
+  labs(
+    title = "Distribution of q1 (Likert Scale) across Age Groups",
+    x = "q1 Response (1-5)",
+    y = "Count",
+    fill = "Age Group"
+  ) +
+  theme_minimal()
+```
+```{r}
+ggplot(df, aes(x = Q2)) +
+  geom_histogram(bins = 20, fill = "steelblue", color = "white") +
+  facet_wrap(~ age, ncol = 3) +  # Creates a clean 2x3 grid for your 6 bins
+  labs(
+    title = "Distribution of q2 (Percentage) by Age Group",
+    x = "Percentage (%)",
+    y = "Count"
+  ) +
+  theme_light()
+```
+
+```{r}
+# Step 1: Calculate percentages within each age group
+df_q1_pct <- df %>%
+  count(age, Q1) %>%               # Count occurrences of each Likert score per age group
+  group_by(age) %>%
+  mutate(percentage = (n / sum(n)) * 100) # Convert to percentage of that age group
+
+# Step 2: Plot as a standardized bar chart
+ggplot(df_q1_pct, aes(x = factor(Q1), y = percentage, fill = age)) +
+  geom_col(position = position_dodge(preserve = "single"), color = "white") +
+  labs(
+    title = "Relative Distribution of q1 (Likert Scale) by Age Group",
+    x = "q1 Response (1-5)",
+    y = "Percentage of Age Group (%)",
+    fill = "Age Group"
+  ) +
+  theme_minimal()
+```
+```{r}
+# Step 1: Create a binary age indicator safely in the dataframe
+df_collapsed <- df %>%
+  mutate(
+    age_coarse = case_when(
+      age %in% c("18-20", "21-23", "23-25") ~ "25_or_under",
+      age %in% c("25-30", "30-35", "over 35") ~ "over_25",
+      .default = NA_character_
+    ),
+    age_coarse = as.factor(age_coarse)
+  )
+
+# Step 2: Re-build your survey design with the new variable
+base_design_age <- svydesign(ids = ~1, data = df_collapsed)
+weighted_design_age <- rake(design = base_design_age,
+                            sample.margins = list(~academic_program),
+                            population.margins = list(pop_program))
+```
+
+WARNING: While this rakes the program split back to a balanced $50/50$ baseline, 
+it leaves age entirely unadjusted. The baseline exploration showed that Business
+Informatics contains zero students under $21$ or over $35$. If we treat 
+age_coarse as a standard additive control variable (+ age_coarse) inside the
+model, the structural empty cells across the program/age matrix risk distorting
+the sandwich variance estimators. (done after q1_age_model and q2_age_model)
+
+```{r}
+q1_age_model <- svyglm(Q1 ~ academic_program * gender + age_coarse, design = weighted_design_age)
+summary(q1_age_model)
+```
+
+```{r}
+q2_age_model <- svyglm(Q2 ~ academic_program * gender + age_coarse, design = weighted_design_age)
+summary(q2_age_model)
+```
+
+```{r}
+# 1. Recode age into a binary factor, fixing the "30-35" grouping error
+df_final <- df %>%
+  mutate(
+    age_coarse = case_when(
+      age %in% c("18-20", "21-23", "23-25") ~ "25_or_under",
+      age %in% c("25-30", "30-35", "over 35") ~ "over_25", # Fixed label string
+      TRUE ~ NA_character_
+    ),
+    age_coarse = as.factor(age_coarse),
+    gender = as.factor(gender),
+    academic_program = as.factor(academic_program)
+  )
+
+# 2. Establish uniform target distribution frames for marginal balancing
+pop_program <- data.frame(academic_program = c("Data Science", "Business Informatics"), 
+                          Freq = c(104.5, 104.5))
+
+pop_age_coarse <- data.frame(age_coarse = c("25_or_under", "over_25"), 
+                             Freq = c(104.5, 104.5))
+
+# 3. Compile the design-weighted framework with multi-margin raking
+base_design_final <- svydesign(ids = ~1, data = df_final)
+
+raked_design_final <- rake(
+  design = base_design_final,
+  sample.margins = list(~academic_program, ~age_coarse),
+  population.margins = list(pop_program, pop_age_coarse)
+)
+
+# 4. Final Robust Multi-Factor Testing (Controlling for Age)
+# Q1: Target Likert Scale Linear Model
+q1_age_controlled <- svyglm(Q1 ~ academic_program * gender + age_coarse, 
+                            design = raked_design_final)
+summary(q1_age_controlled)
+
+# Q2: Target Percentage Adoption Model
+q2_age_controlled <- svyglm(Q2 ~ academic_program * gender + age_coarse, 
+                            design = raked_design_final)
+summary(q2_age_controlled)
+```
+
+Controlling for age, the primary predictors remain non-significant as main 
+effects in both models.For Q1 (implant willingness), neither academic program,
+gender, age ($p = 0.426$), nor their interaction significantly predict choices;
+the previously observed unweighted gender divide disappears under full 
+population controls.
+
+For Q2 (estimated public adoption), age holds no meaningful effect 
+($p = 0.511$). However, the interaction between Data Science and Male gender
+remains marginally significant ($p = 0.063$). This indicates that even when 
+adjusting for age structural imbalances, the inverse relationship where 
+Data Science females are highly optimistic while males are pessimistic 
+persists as a strong population trend.
+
+## Q3: Risk Perception
+Question 3 aims at answering the question which specific digital risks are most strongly associated with the fear of neural implants?
+Our hypothesis was that the concerns regarding "Lack of Agency" and "Dependence on big tech companies" will be the most frequently cited risks among those who reject the implant.
+\newline
+Although respondents were instructed to select a maximum of three answers, around 20% selected more than three. We decided to keep these responses in the analysis because excluding them would have reduced the sample size considerably, and there is no way to know which three options respondents would have considered their top choices. This likely leads to an overestimation of the frequencies of some categories, although it is not possible to determine which ones. We nevertheless assume that the overall ranking of the most frequently selected categories would remain similar if everyone had followed the instructions.
+\newline
+We applied a combination of statistical tests to address the different types of research questions in our analysis. Chi-square tests of independence were used to examine whether the selection of specific risk factors was associated with group membership (e.g., acceptance status, gender, or age), as they are appropriate for testing relationships between categorical variables. McNemar’s test was employed to compare paired binary responses within individuals, allowing us to test whether two related risk factors were selected with significantly different frequencies within the same respondents.
+\newline
+As a first step for our analysis, we perform an exploratory analysis to identify which risk categories were selected most frequently overall and then separated by if people would accept the implant or not.
+
+```{r, include = FALSE}
+### Transform the dataset
+df_long <- df %>%
+  separate_rows(Q3, sep = ";")
+df_long <- df_long %>%
+  mutate(
+    acceptance = ifelse(Q1 > 3, 1, 0),
+  )
+
+
+df_test <- df %>%
+  mutate(
+    loss_agency = ifelse(str_detect(Q3, "Polarisation of opinions"), 1, 0),
+    loss_personality = ifelse(str_detect(Q3, "Loss of personality"), 1, 0),
+    data_collection = ifelse(str_detect(Q3, "Data collection by big tech companies"), 1, 0),
+    big_tech    = ifelse(str_detect(Q3, "Dependence on big tech companies"), 1, 0),
+    health    = ifelse(str_detect(Q3, "Adverse physical health effects"), 1, 0),
+    transparency   = ifelse(str_detect(Q3, "Lack of transparency of how digital products function"), 1, 0),
+    skill    = ifelse(str_detect(Q3, "Devaluation of traditional skills"), 1, 0),
+    sleep    = ifelse(str_detect(Q3, "Impaired sleep"), 1, 0),
+    addiction    = ifelse(str_detect(Q3, "Social media addiction"), 1, 0),
+    agency    = ifelse(str_detect(Q3, "Lack of agency"), 1, 0),
+    info_overload    = ifelse(str_detect(Q3, "Information overload"), 1, 0),
+    alienation    = ifelse(str_detect(Q3, "Alienation"), 1, 0),
+    endeavors      = ifelse(str_detect(Q3, "Lack of non-digital endeavors"), 1, 0),
+    acceptance = ifelse(Q1 > 3, 1, 0)
+  )
+```
+
+```{r}
+df_long %>% count(Q3, sort = TRUE) %>%
+  mutate(percent = (n / nrow(df_long))*100) %>% kable()
+```
+
+
+
+```{r, fig.align='center'}
+### Transform the dataset
+ggplot(df_long, aes(x = reorder(Q3, Q3, FUN = length, decreasing = TRUE))) +
+  geom_bar(color = "black") +
+  labs(title = "Q3 Distribution",
+       x = "Answer",
+       y = "Count") +
+  theme_minimal() + 
+  theme(
+  plot.title = element_text(size = 15, face = "bold"),
+  axis.title = element_text(size = 12),
+  axis.text = element_text(size = 8)
+  ) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))   
+```
+
+```{r, fig.show='hold', out.width='45%', fig.align='center' , fig.height=6}
+### Transform the dataset
+df_acc <- df_long %>% filter(acceptance == 1)
+ggplot(df_acc, aes(x = reorder(Q3, Q3, FUN = length, decreasing = TRUE),
+                   y = after_stat(count / sum(count) * 100))) +
+  geom_bar(fill = "salmon") +
+  labs(title = "Q3 Distribution - Acceptance",
+       x = "Answer",
+       y = "Percentage (%)") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 15, face = "bold"),
+    axis.title = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    axis.text.x = element_text(angle = 90, hjust = 1)
+  ) 
+
+df_not <- df_long %>% filter(acceptance == 0)
+ggplot(df_not, aes(x = reorder(Q3, Q3, FUN = length, decreasing = TRUE),
+                   y = after_stat(count / sum(count) * 100))) +
+  geom_bar(fill = "#40E0D0") +
+  labs(title = "Q3 Distribution - Non-Acceptance",
+       x = "Answer",
+       y = "Percentage (%)") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 15, face = "bold"),
+    axis.title = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    axis.text.x = element_text(angle = 90, hjust = 1)
+  )  
+```
+
+In the plots and the table above we can see that dependence on big tech companies is among the most frequently selected responses, ranking second overall, whereas loss of agency is selected less often. When the data is separated by acceptance and non-acceptance of the implant, the ordering of the categories changes slightly. Among participants who would accept the implant, dependence on big tech companies represents the most frequently selected concern, followed by data collection by big tech companies and adverse physical health effects. In comparison for the people that would not accept an implant, the top reasons are data collection by big tech companies, followed by dependence on big tech companies and loss of personality. Lack of agency ranks low in both.
+
+
+As our hypothesis focused on Loss of Agency and Dependence on Big Tech, we specifically examined whether the selection of these two perceived risks was associated with participants' willingness to accept a neural implant. For each risk factor, a contingency table was constructed, and a chi-square test of independence was performed to compare the proportions of participants selecting the risk between the acceptance and non-acceptance groups.  
+```{r}
+table(df_test$loss_agency, df_test$acceptance)
+chisq.test(df_test$loss_agency, df_test$acceptance)
+
+table(df_test$big_tech, df_test$acceptance)
+chisq.test(df_test$big_tech, df_test$acceptance)
+```
+These findings do not support the idea that both hypothesized risks distinguish between acceptance groups. Loss of Agency was not associated with acceptance status (p = 0.3747), whereas Dependence on Big Tech showed a significant association (p = 0.01201). Interestingly, concern about dependence on big tech companies was more common among participants willing to accept the implant. This suggests that many participants who are open to neural implants still recognize dependence on large technology companies as an important risk, rather than viewing it as a reason to reject the technology. Since we did to test, I also applied a bonferroni correction, even with the adapted p-value of 0.02402 the test remains significant.
+
+Additionally, we examined whether Dependence on Big Tech Companies was selected significantly more often than the second most frequently chosen risk factor (Data Collection) within the acceptance group, and more often than the third most frequently chosen risk factor (Loss of Personality) within the non-acceptance group. For Loss of Agency, no formal test was conducted, as the exploratory analysis indicated that it was rarely selected overall.
+
+```{r}
+df_acc <- df_test %>% filter(acceptance == 1)
+df_not <- df_test %>% filter(acceptance == 0)
+mcnemar.test(table(df_acc$big_tech, df_acc$data_collection))
+mcnemar.test(table(df_not$big_tech, df_not$loss_personality))
+```
+
+To account for multiple comparisons, a Bonferroni correction was applied to the p-values. Within the acceptance group, Dependence on Big Tech Companies was not selected significantly more often than the next most frequently chosen risk factor (adjusted p=0.141). In contrast, within the non-acceptance group, it was selected significantly more often than the next most frequently chosen factor (adjusted p=0.0057).
+These results suggest that while Dependence on Big Tech Companies is not the single most frequently selected risk in all groups, it remains a consistently prominent concern, particularly among participants who would reject the implant.
+
+### Differences in gender and age groups
+We further investigated whether the selection of the two key risk factors (Loss of Agency and Dependence on Big Tech Companies) differed by gender and age group using chi-square tests of independence. In both cases, the null hypothesis could not be rejected, indicating no statistically significant association between gender or age class and the selection of these risk factors.
+
+```{r}
+table(df_test$loss_agency, df_test$gender)
+chisq.test(df_test$loss_agency, df_test$gender)
+
+table(df_test$big_tech, df_test$gender)
+chisq.test(df_test$big_tech, df_test$gender)
+```
+
+
+```{r}
+table(df_test$loss_agency, df_test$age)
+chisq.test(df_test$loss_agency, df_test$age)
+
+table(df_test$big_tech, df_test$age)
+chisq.test(df_test$big_tech, df_test$age)
+```
+
+# Discussion and Conclusion
