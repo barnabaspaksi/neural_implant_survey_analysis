@@ -22,9 +22,8 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Introduction
 
-Advances in neurotechnology have brought invasive cognitive‑enhancement implants from speculative concepts into emerging real‑world applications. As these technologies progress, questions arise not only about their technical feasibility but also about public acceptance, perceived societal adoption, and the digital risks associated with integrating biological and computational systems. Understanding these attitudes is essential for anticipating ethical, social, and regulatory implications.
-
-This report presents a survey‑based analysis examining three dimensions of public perception: individual willingness to undergo a neural implant, expectations regarding broader societal adoption, and the specific digital risks respondents associate with such technologies. Through this exploration, the study aims to provide an initial empirical foundation for assessing how people evaluate invasive neural enhancement after extended safety testing and how concerns about agency, dependence on technology companies, and digital vulnerability shape these evaluations.
+Neurotechnology is developing quickly, and ideas like invasive cognitive‑enhancement implants are starting to move into real applications. As these technologies evolve, it becomes important to understand how people feel about them.
+This report analyzes survey responses to explore three aspects of public perception: people’s personal willingness to receive a neural implant, their expectations about how many others would choose to do so, and the digital risks they find most concerning. 
 
 
 # Data Loading and Preparation
